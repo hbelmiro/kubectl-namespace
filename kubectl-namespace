@@ -1,0 +1,52 @@
+#!/usr/bin/env python
+
+import argparse
+import subprocess
+import sys
+
+
+def namespace_exists(namespace):
+    try:
+        subprocess.run(['kubectl', 'get', 'namespace', namespace], check=True, stdout=subprocess.DEVNULL,
+                       stderr=subprocess.DEVNULL)
+        return True
+    except subprocess.CalledProcessError:
+        return False
+
+
+def switch_namespace(namespace):
+    if namespace_exists(namespace):
+        try:
+            subprocess.run(['kubectl', 'config', 'set-context', '--current', '--namespace=' + namespace], check=True,
+                           stdout=subprocess.DEVNULL)
+            print(f'Switched to namespace: {namespace}')
+        except subprocess.CalledProcessError:
+            print(f'Failed to switch to namespace: {namespace}')
+    else:
+        print(f'Namespace {namespace} does not exist.')
+        sys.exit(1)
+
+
+def get_current_namespace():
+    try:
+        result = subprocess.run(['kubectl', 'config', 'view', '--minify', '--output', 'jsonpath={..namespace}'],
+                                capture_output=True, check=True, text=True)
+        current_namespace = result.stdout.strip()
+        print(current_namespace)
+    except subprocess.CalledProcessError:
+        print('Failed to get current namespace.')
+
+
+def main():
+    parser = argparse.ArgumentParser(description='Switch kubectl namespace')
+    parser.add_argument('namespace', nargs='?', help='The namespace to switch to')
+    args = parser.parse_args()
+
+    if args.namespace:
+        switch_namespace(args.namespace)
+    else:
+        get_current_namespace()
+
+
+if __name__ == '__main__':
+    main()
